@@ -15,6 +15,7 @@ export default function Header({ console: inConsole = false }) {
               <a href="#submit">Submit</a>
               <a href="#log">Log</a>
               <a href="#agents">Agents</a>
+              <a href="#context">Context</a>
               <a href="#ways">Two ways</a>
               <a href="#clauses">Clauses</a>
               <a href="#permit">Permit</a>

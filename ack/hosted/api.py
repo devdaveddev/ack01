@@ -5,6 +5,7 @@ verdict is computed here from the copy the subscriber was given. The digest chec
 real rule: a subscriber recomputes sha256 on its copy and ACKs only if it matches the announced digest.
 """
 
+import concurrent.futures
 import hashlib
 import hmac
 import os
@@ -17,11 +18,14 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from .. import context
+from ..context import ContextError, build_from_sources, parse_github
 from .db import Agent, Event, Handoff, Vote, database_url, make_engine, make_sessions
+from .safe_fetch import SafeOpener, check_url
 
 SUBSCRIBERS = ("alpha", "gamma", "delta")
 SITE_DIST = Path(__file__).resolve().parents[2] / "site" / "dist"
@@ -30,12 +34,49 @@ POSTS_PER_MINUTE = 10  # per client address, in memory; a single process only
 AGENTS_PER_DAY = 3  # agents one client address may create
 EVENTS_PER_MINUTE = 20  # posts one agent may make
 EVENT_KINDS = ("note", "question", "answer", "share")
+CONTEXT_PER_HOUR = 3  # context packs one client address may build
+CONTEXT_PER_DAY = 40  # context packs the whole site may build in a day
+CONTEXT_TIMEOUT = 60  # seconds before a build is abandoned
+CONTEXT_SITE_PAGES = 4
+_BUILDER = concurrent.futures.ThreadPoolExecutor(max_workers=1)  # one pack at a time
+_busy = False
+
 AGENT_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{2,31}$")
 _CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 
 
 class NewAgent(BaseModel):
     name: str = Field(min_length=3, max_length=32)
+
+
+class NewContext(BaseModel):
+    goal: str = Field(min_length=3, max_length=200)
+    github: list[str] = Field(default_factory=list, max_length=2)
+    sites: list[str] = Field(default_factory=list, max_length=2)
+
+    @field_validator("github")
+    @classmethod
+    def github_repos(cls, value: list[str]) -> list[str]:
+        for url in value:
+            try:
+                parse_github(url)
+            except ContextError as e:
+                raise ValueError(str(e)) from None
+        return value
+
+    @field_validator("sites")
+    @classmethod
+    def site_urls(cls, value: list[str]) -> list[str]:
+        for url in value:
+            if len(url) > 300:
+                raise ValueError("website addresses must be 300 characters or fewer")
+        return value
+
+    @model_validator(mode="after")
+    def needs_a_source(self):
+        if not self.github and not self.sites:
+            raise ValueError("give at least one GitHub repository or website")
+        return self
 
 
 class NewEvent(BaseModel):
@@ -262,6 +303,49 @@ def create_app(url: str | None = None) -> FastAPI:
             .order_by(Event.id.desc()).limit(limit)
         ).all()
         return {"events": [serialize_event(event, name) for event, name in rows]}
+
+    @app.post("/api/context")
+    def build_context(payload: NewContext, request: Request):
+        global _busy
+        if not take("context:" + client_address(request), CONTEXT_PER_HOUR, 3600):
+            raise HTTPException(429, "this address has built its context packs for the hour")
+        if not take("context-day", CONTEXT_PER_DAY, 86400):
+            raise HTTPException(429, "the site has built its context packs for today; try tomorrow")
+        if _busy:
+            raise HTTPException(503, "another pack is being built; try again in a minute")
+        for url in payload.sites:
+            try:
+                check_url(url)
+            except ContextError as e:
+                raise HTTPException(422, str(e)) from None
+
+        def work():
+            global _busy
+            _busy = True
+            # Every request the builder makes goes through the guarded opener, for this build only.
+            previous, context._OPENER = context._OPENER, SafeOpener()
+            try:
+                return build_from_sources(payload.goal, payload.github, payload.sites,
+                                          name=context.slug(payload.goal), max_pages=CONTEXT_SITE_PAGES)
+            finally:
+                context._OPENER = previous
+                _busy = False
+
+        future = _BUILDER.submit(work)
+        try:
+            pack = future.result(timeout=CONTEXT_TIMEOUT)
+        except concurrent.futures.TimeoutError:
+            raise HTTPException(504, "the sources took too long to read; try fewer or smaller ones") from None
+        except ContextError as e:
+            raise HTTPException(422, str(e)) from None
+        return {
+            "name": pack.name,
+            "goal": pack.goal,
+            "markdown": pack.markdown,
+            "prompt": pack.prompt,
+            "sources": [i.source for i in pack.items],
+            "items": len(pack.items),
+        }
 
     @app.exception_handler(HTTPException)
     def http_error(request: Request, exc: HTTPException):

@@ -130,6 +130,16 @@ class Pack:
 
 # ---------------------------------------------------------------- HTTP
 
+# The public site installs a guarded opener here (see ack/hosted/safe_fetch.py). Local use leaves it None.
+_OPENER = None
+
+
+def _open(req: urllib.request.Request):
+    if _OPENER is not None:
+        return _OPENER.open(req, timeout=TIMEOUT)
+    return urllib.request.urlopen(req, timeout=TIMEOUT)
+
+
 def _get(url: str, limit: int, accept: str = "*/*", token: str | None = None) -> tuple[bytes, str, str]:
     """GET with a size cap. Returns (body, final url, content type)."""
     if urllib.parse.urlsplit(url).scheme not in ("http", "https"):
@@ -138,7 +148,7 @@ def _get(url: str, limit: int, accept: str = "*/*", token: str | None = None) ->
     if token:
         req.add_header("Authorization", f"Bearer {token}")
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+        with _open(req) as resp:
             body = resp.read(limit + 1)
             if len(body) > limit:
                 raise ContextError(f"{url} is larger than {limit >> 20} MB")

@@ -6,6 +6,7 @@ import Handoff from './components/Handoff.jsx'
 import Ledger from './components/Ledger.jsx'
 import Agents from './components/Agents.jsx'
 import AgentWire from './components/AgentWire.jsx'
+import ContextPack from './components/ContextPack.jsx'
 import { Clauses, Filing, Footer, Permit, Ways } from './components/Sections.jsx'
 import Console from './console/Console.jsx'
 import { LIVE, StatusProvider } from './lib/api.jsx'
@@ -61,6 +62,7 @@ export default function App() {
               <Handoff />
               <Ledger />
               <Agents />
+              <ContextPack />
               <Ways />
               <Clauses />
               <Permit />

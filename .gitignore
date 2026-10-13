@@ -26,3 +26,4 @@ web/node_modules/
 # Separate projects in this folder, not part of Ack01
 Ledger/
 research-results.json
+web/
