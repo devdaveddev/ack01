@@ -436,15 +436,6 @@ ol { padding: 0; list-style: none; }
 .wire__packet.is-bad { background: #c0504d; animation: wire-back 1.2s ease-in-out forwards; }
 .wire__log.is-bad { color: #a23b38; border-color: #e3b6b3; background: #fbf4f3; }
 
-/* ---------------------------------------------------------------- ring (hero visual) */
-.ring { position: relative; width: 100%; height: clamp(360px, 62vh, 620px); min-width: 0; cursor: crosshair; touch-action: pan-y; }
-.ring canvas { display: block; width: 100% !important; height: 100% !important; }
-.hero__grid { align-items: center; }
-.wire-section { background: var(--panel); border-top: 1px solid var(--line); }
-.wire-section__inner { display: flex; flex-direction: column; gap: 20px; padding-block: var(--section); }
-.wire-section__intro { max-width: 60ch; color: var(--ink-2); }
-.wire-section .wire { max-width: 640px; }
-
 /* ---------------------------------------------------------------- context pack */
 .context { background: var(--panel-2); border-top: 1px solid var(--line); }
 .context__inner { display: flex; flex-direction: column; gap: 20px; padding-block: var(--section); }

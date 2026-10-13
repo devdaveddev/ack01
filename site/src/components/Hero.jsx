@@ -1,7 +1,6 @@
 import { motion } from 'motion/react'
 import { enter, spring } from '../lib/motion.js'
 import { AGENT, LIVE } from '../lib/api.jsx'
-import Ring from './Ring.jsx'
 
 const FIELDS = [
   ['Subject', 'Code push verification'],
@@ -46,7 +45,6 @@ export default function Hero() {
           </motion.div>
         </div>
 
-        <Ring />
       </div>
 
       <div className="hero__fields">
