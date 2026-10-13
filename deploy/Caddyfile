@@ -1,0 +1,5 @@
+# Replaced by setup.sh with your domain (HTTPS is automatic) or :80 when there is none.
+__SITE__ {
+	encode gzip
+	reverse_proxy 127.0.0.1:8900
+}

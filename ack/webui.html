@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* "Manifest": a technical-document look. Tokens first; dark mode redefines them. */
+:root {
+  --bg: #F5F6F8; --panel: #FFFFFF; --ink: #0F1419; --ink2: #3F4651; --muted: #4B5563;
+  --line: #E2E5EA; --line2: #C9CED6; --chip: #EEF0F3; --code: #F5F6F8;
+  --accent: #3346D3; --accent-ink: #FFFFFF; --accent-soft: #EEF0FF; --accent-text: #1F2E9E;
+  --warn: #C2410C; --warn-text: #9A3412; --warn-soft: #FFF7ED; --warn-line: #F3C29B;
+  --good: #15803D; --good-text: #166534; --good-soft: #ECFDF3;
+  --bad: #B42318; --bad-soft: #FEF3F2;
+  --shadow: 0 1px 2px rgba(16,20,25,.05);
+  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0E1116; --panel: #161B22; --ink: #E8EAEE; --ink2: #C3C9D2; --muted: #9AA3B2;
+    --line: #262D38; --line2: #3A4350; --chip: #212833; --code: #0F141B;
+    --accent: #8EA2FF; --accent-ink: #0E1116; --accent-soft: #1E2645; --accent-text: #B8C4FF;
+    --warn: #F2A65A; --warn-text: #F6C38E; --warn-soft: #2B2013; --warn-line: #5C3E1C;
+    --good: #5FD39A; --good-text: #7FE0AE; --good-soft: #13261C;
+    --bad: #FF8A80; --bad-soft: #321A19; --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; } /* layout classes must never un-hide an element */
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--sans); }
+a { color: var(--accent); }
+a:hover { color: var(--accent-text); }
+code, pre, .mono { font-family: var(--mono); font-size: 13px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: 32px; letter-spacing: -.5px; line-height: 1.1; margin: 0; }
+h2 { font-size: 17px; font-weight: 600; margin: 0; }
+h3 { font-size: 15px; font-weight: 600; margin: 0; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.lead { color: var(--ink2); font-size: 16px; max-width: 760px; }
+
+/* shell */
+.shell { display: flex; flex-wrap: wrap; min-height: 100vh; }
+.side { flex: 1 1 240px; max-width: 100%; background: var(--panel); border-right: 1px solid var(--line);
+  padding: 20px 14px; display: flex; flex-direction: column; gap: 18px; }
+.brand { font-family: var(--display); font-weight: 800; font-size: 26px; padding: 0 10px; letter-spacing: -.5px; }
+.brand span { color: var(--accent); }
+.me { padding: 0 10px; display: flex; flex-direction: column; gap: 2px; }
+.me b { font-size: 15px; }
+.me .mono { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.side nav { display: flex; flex-direction: column; gap: 2px; }
+.side nav a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; min-height: 44px; border-radius: 8px;
+  color: var(--ink2); text-decoration: none; }
+.side nav a:hover { background: var(--chip); color: var(--ink); }
+.side nav a.on { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+.side nav svg { flex: none; }
+.grow { flex: 1 1 auto; }
+.count { background: var(--warn); color: #FFFFFF; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 1px 8px; }
+.new { font-family: var(--mono); font-size: 11px; color: var(--accent-text); background: var(--accent-soft); border-radius: 4px; padding: 1px 6px; }
+.status { margin-top: auto; padding: 10px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.status .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.status.good { color: var(--good); } .status.bad { color: var(--bad); } .status.warn { color: var(--warn); }
+.main { flex: 999 1 560px; min-width: 0; padding: 32px; display: flex; flex-direction: column; gap: 22px; }
+@media (min-width: 900px) { .side { position: sticky; top: 0; height: 100vh; overflow: auto; } }
+@media (max-width: 899px) {
+  .side { flex-basis: 100%; border-right: 0; border-bottom: 1px solid var(--line); padding: 14px 12px; gap: 10px; }
+  .side nav { flex-direction: row; overflow-x: auto; scrollbar-width: thin; }
+  .side nav a { white-space: nowrap; }
+  .status { margin-top: 0; padding: 0 10px; }
+  .main { padding: 20px 16px 48px; }
+}
+section.view { display: none; flex-direction: column; gap: 20px; }
+section.view.on { display: flex; }
+
+/* building blocks */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); min-width: 0; }
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.cols > .wide { flex: 999 1 560px; min-width: 0; }
+.cols > .narrow { flex: 1 1 320px; min-width: 0; }
+.grid2 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+label .hint { font-weight: 400; color: var(--muted); }
+input, select, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line2); border-radius: 8px; padding: 10px 12px; min-height: 44px; }
+textarea { min-height: 88px; resize: vertical; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type=checkbox] { width: 20px; height: 20px; min-height: 0; accent-color: var(--accent); }
+input[type=range] { padding: 0; accent-color: var(--accent); }
+button, .btn { font: inherit; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--line2); background: var(--panel);
+  color: var(--ink); cursor: pointer; text-decoration: none; }
+button:hover, .btn:hover { border-color: var(--accent); color: var(--ink); }
+.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.primary:hover { color: var(--accent-ink); filter: brightness(1.08); }
+.danger { color: var(--bad); }
+.big { min-height: 52px; font-size: 16px; border-radius: 10px; }
+.linkbtn { border: 0; background: none; color: var(--accent); padding: 0 2px; min-height: 32px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; background: var(--chip); border: 1px solid var(--line);
+  font-size: 12px; color: var(--ink2); }
+button.chip { min-height: 32px; font-weight: 500; font-size: 13px; }
+.tag { font-family: var(--mono); font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.tag.ADOPT { background: var(--good-soft); color: var(--good-text); }
+.tag.ADAPT { background: var(--accent-soft); color: var(--accent-text); }
+.tag.REJECT { background: var(--bad-soft); color: var(--bad); }
+.tag.PAIRED, .tag.NOTE { background: var(--chip); color: var(--ink2); }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+.pill.good { background: var(--good-soft); color: var(--good-text); }
+.pill.warn { background: var(--warn-soft); color: var(--warn-text); border: 1px solid var(--warn-line); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.dark { background: var(--ink); color: var(--bg); }
+.pill.idle { background: var(--chip); color: var(--ink2); font-weight: 500; }
+.empty { color: var(--muted); padding: 24px; text-align: center; border: 1px dashed var(--line2); border-radius: 12px; }
+.needs { background: var(--warn-soft); border: 1px solid var(--warn-line); border-radius: 12px; padding: 18px; }
+.needs h2 { color: var(--warn-text); font-size: 15px; }
+.needs .item { background: var(--panel); border: 1px solid var(--warn-line); border-radius: 10px; padding: 14px 16px; }
+.banner { display: none; background: var(--warn-soft); color: var(--warn-text); border: 1px solid var(--warn-line); border-radius: 10px; padding: 10px 14px; }
+.banner.on { display: block; }
+.banner a { color: inherit; font-weight: 600; }
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.checks li { display: flex; gap: 10px; align-items: flex-start; }
+.checks svg { flex: none; margin-top: 2px; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; border-bottom: 1px solid var(--line); background: var(--code); }
+.tabs button { font-family: var(--mono); font-size: 13px; font-weight: 500; min-height: 38px; padding: 6px 12px; border-color: transparent; background: transparent; color: var(--muted); }
+.tabs button[aria-selected=true] { background: var(--panel); border-color: var(--line2); color: var(--ink); }
+.code { font-family: var(--mono); font-size: 13px; line-height: 1.7; padding: 12px 0; overflow: auto; max-height: 560px; }
+.code .ln { display: flex; }
+.code .n { width: 52px; flex: none; text-align: right; padding-right: 14px; color: var(--muted); user-select: none; opacity: .7; }
+.code .t { white-space: pre; padding-right: 16px; }
+.code .add { background: var(--good-soft); color: var(--good-text); }
+.code .del { background: var(--bad-soft); color: var(--bad); }
+.code .hunk { color: var(--accent); }
+pre { background: var(--code); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow: auto; max-height: 420px; margin: 0; }
+details summary { cursor: pointer; color: var(--muted); font-size: 13px; min-height: 28px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-size: 13px; font-weight: 600; }
+.scroll { overflow-x: auto; }
+.meter { height: 8px; border-radius: 4px; background: var(--chip); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.meter.over i { background: var(--bad); }
+.match { display: inline-block; width: 80px; height: 6px; border-radius: 3px; background: var(--chip); overflow: hidden; vertical-align: middle; }
+.match i { display: block; height: 100%; background: var(--accent); }
+.ctx-item { display: flex; gap: 14px; align-items: flex-start; }
+.ctx-item.flagged { background: var(--warn-soft); border-color: var(--warn-line); }
+.ctx-item.viewing { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.fp { display: flex; flex-wrap: wrap; gap: 6px; }
+.fp span { font-family: var(--mono); font-size: 17px; font-weight: 500; padding: 3px 10px; border-radius: 6px; background: var(--code); border: 1px solid var(--line); }
+.qr { background: #FFFFFF; border: 1px solid var(--line); border-radius: 12px; padding: 12px; line-height: 0; display: inline-block; }
+.qr svg { width: 220px; height: 220px; display: block; }
+.filelist { max-height: 200px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 4px; }
+.filelist button { display: block; width: 100%; text-align: left; border: 0; min-height: 32px; padding: 4px 8px; font-family: var(--mono); font-size: 13px; font-weight: 400; }
+.filelist button:hover { background: var(--accent-soft); }
+.spell { font-size: 13px; color: var(--ink2); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; min-height: 20px; }
+.spell b { color: var(--accent-text); background: var(--accent-soft); border-radius: 4px; padding: 0 3px; font-weight: 600; }
+.packdoc { white-space: pre-wrap; max-height: 720px; font-size: 13px; line-height: 1.65; }
+#toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 10; max-width: min(420px, calc(100vw - 32px)); }
+.toast { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 8px; padding: 10px 14px; box-shadow: 0 6px 20px rgba(0,0,0,.15); }
+.toast.bad { border-left-color: var(--bad); }
+.toast.good { border-left-color: var(--good); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="side">
+    <div class="brand">Ack<span>.</span></div>
+    <div class="me"><b id="me-name">connecting…</b><span class="mono" id="me-key"></span><span class="mono" id="me-root"></span></div>
+    <nav id="nav" aria-label="App">
+      <a href="#home"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+      <a href="#ask"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-12 7l-5 1 1-4a8 8 0 1 1 16-4z"/></svg>Ask &amp; request</a>
+      <a href="#approvals"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg><span class="grow">Approvals</span><span class="count" id="approval-count" hidden></span></a>
+      <a href="#installed"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7l8-4 8 4-8 4zM4 12l8 4 8-4M4 17l8 4 8-4"/></svg>Installed</a>
+      <a href="#parts"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>My parts</a>
+      <a href="#context"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/></svg><span class="grow">Context packs</span><span class="new">NEW</span></a>
+      <a href="#peers"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M15 15c3 0 6 1.5 6 4"/></svg>Peers</a>
+      <a href="#activity"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>Activity</a>
+      <a href="#audit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>Audit</a>
+    </nav>
+    <div class="status" id="broker-pill"><span class="dot"></span><span>connecting…</span></div>
+  </aside>
+
+  <main class="main">
+    <div class="banner" id="banner" role="status"><b>Waiting for you:</b> <span id="banner-text"></span> · <a href="#approvals">Review now</a></div>
+
+    <!-- HOME -->
+    <section class="view" id="home">
+      <div class="row" style="align-items:flex-end">
+        <div class="grow stack" style="gap:4px">
+          <h1 id="hello">Hello</h1>
+          <div class="mono muted" id="hello-root"></div>
+        </div>
+        <a class="btn" href="#context">New context pack</a>
+      </div>
+
+      <div class="card stack" id="pair-card" hidden style="border-color:var(--accent)">
+        <h2>You're not paired with anyone yet</h2>
+        <p class="small muted">Agents can only share with agents they've paired with. Do one of these:</p>
+        <div class="grid2">
+          <div class="stack">
+            <h3>Invite another agent</h3>
+            <div><button class="primary invite-btn" data-out="home-invite-out" type="button">Create invite</button></div>
+            <div id="home-invite-out" class="stack"></div>
+          </div>
+          <form class="stack join-form">
+            <h3>Join someone's invite</h3>
+            <label for="home-join">Invite link</label>
+            <textarea id="home-join" name="uri" placeholder="paste an ack://pair?... link" required></textarea>
+            <div><button class="primary">Join</button></div>
+          </form>
+        </div>
+      </div>
+
+      <div id="needs"></div>
+
+      <div class="card stack">
+        <h2>Ask a peer</h2>
+        <form id="home-ask" class="row" style="align-items:flex-end">
+          <div style="flex:0 1 180px"><label for="home-peer">Peer</label><select id="home-peer" name="peer" class="peer-select" required></select></div>
+          <div style="flex:1 1 320px"><label for="home-q">Question</label><input id="home-q" name="text" placeholder="How do you retry flaky HTTP calls?" required autocomplete="off" spellcheck="false"></div>
+          <input type="hidden" name="exact" value="">
+          <button class="primary">Ask</button>
+          <div class="spell" id="home-spell" aria-live="polite" style="flex-basis:100%"></div>
+        </form>
+      </div>
+
+      <div class="cols">
+        <div class="card stack wide" id="latest"></div>
+        <div class="card stack narrow"><h2>Recent</h2><div id="recent"></div></div>
+      </div>
+    </section>
+
+    <!-- ASK -->
+    <section class="view" id="ask">
+      <div class="stack" style="gap:6px"><h1>Ask &amp; request</h1>
+        <p class="lead">Start with a question. If the summary isn't enough, request the part itself.</p></div>
+      <div class="grid2">
+        <div class="card stack">
+          <h2>Ask a question</h2>
+          <form id="ask-form" class="stack">
+            <div><label for="ask-peer">Peer</label><select id="ask-peer" name="peer" class="peer-select" required></select></div>
+            <div><label for="ask-q">Question</label><input id="ask-q" name="text" placeholder="How do you retry flaky HTTP calls?" required autocomplete="off" spellcheck="false">
+              <input type="hidden" name="exact" value=""><div class="spell" id="ask-spell" aria-live="polite" style="margin-top:6px"></div></div>
+            <div id="hints" class="row small"></div>
+            <div><button class="primary">Ask</button></div>
+          </form>
+        </div>
+        <div class="card stack">
+          <h2>Request a part</h2>
+          <form id="request-form" class="stack">
+            <div><label for="req-peer">Peer</label><select id="req-peer" name="peer" class="peer-select" required></select></div>
+            <div><label for="req-part">Part <span class="hint">(click a source in an answer to fill this in)</span></label><input id="req-part" name="source_id" placeholder="retry-backoff" required></div>
+            <div><label for="req-why">Why you need it</label><input id="req-why" name="reason" placeholder="our webhook sender drops events on transient errors" required></div>
+            <div><label for="req-intent">What you'll do with it</label><input id="req-intent" name="intent" placeholder="wrap webhook delivery calls in retry()" required></div>
+            <div><button class="primary">Send request</button></div>
+          </form>
+          <div id="requests" class="small"></div>
+        </div>
+      </div>
+      <h2>Answers</h2>
+      <div id="answers" class="stack"></div>
+    </section>
+
+    <!-- APPROVALS -->
+    <section class="view" id="approvals">
+      <div id="approval-view" class="stack" style="gap:20px"></div>
+    </section>
+
+    <!-- INSTALLED -->
+    <section class="view" id="installed">
+      <div class="stack" style="gap:6px"><h1>Installed from peers</h1>
+        <p class="lead">Parts you adopted (copied in) or adapted (kept under <code>vendor/</code> to build around).</p></div>
+      <div id="install-list" class="stack"></div>
+    </section>
+
+    <!-- PARTS -->
+    <section class="view" id="parts">
+      <div class="stack" style="gap:6px"><h1>My parts</h1>
+        <p class="lead">Parts of this project other agents can ask about and request. Only peers on a part's allow list can see it.</p></div>
+      <div id="part-list" class="stack"></div>
+      <div class="card stack">
+        <h2>Share a part</h2>
+        <form id="share-form" class="stack">
+          <div class="grid2">
+            <div class="stack">
+              <div><label for="sh-id">Part id <span class="hint">(letters, digits, - and _)</span></label><input id="sh-id" name="id" placeholder="retry-backoff" required></div>
+              <div><label for="share-base">Folder <span class="hint">(inside the project; tests run here)</span></label><input name="base" placeholder="retry" id="share-base"></div>
+              <div><label for="share-files">Files <span class="hint">(relative to the folder, one per line; pick below)</span></label><textarea name="files" id="share-files" required></textarea></div>
+              <div><label>Project files</label><div class="filelist" id="tree"></div></div>
+            </div>
+            <div class="stack">
+              <div><label for="sh-topic">Topic</label><input id="sh-topic" name="topic" placeholder="retry flaky calls with exponential backoff" required></div>
+              <div><label for="sh-sum">One-line summary</label><input id="sh-sum" name="summary" placeholder="retry(fn, attempts, base): calls fn, backing off between failures" required></div>
+              <div><label for="sh-tags">Tags <span class="hint">(comma-separated)</span></label><input id="sh-tags" name="tags" placeholder="http, resilience"></div>
+              <div><label for="sh-allow">Who may request it <span class="hint">(peer names, comma-separated, or *)</span></label><input id="sh-allow" name="allow" class="allow-input"></div>
+              <div><label for="sh-notes">Notes <span class="hint">(longer detail, summarised in answers)</span></label><textarea id="sh-notes" name="notes"></textarea></div>
+              <div><label for="sh-tests">Test command</label><input id="sh-tests" name="tests" value="python -m unittest discover -s . -p test_*.py"></div>
+              <div><label for="sh-deps">Dependencies <span class="hint">(e.g. requests&gt;=2.31, comma-separated)</span></label><input id="sh-deps" name="deps"></div>
+            </div>
+          </div>
+          <div><button class="primary">Share</button></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- CONTEXT PACKS -->
+    <section class="view" id="context">
+      <div class="row">
+        <div class="grow stack" style="gap:6px"><h1>Context packs</h1>
+          <p class="lead">Point your agent at a GitHub repository or a website. It ranks what's relevant to your goal, you review it, and it writes a cited prompt for your project.</p></div>
+        <ol class="steps" aria-label="Steps" id="ctx-steps"></ol>
+      </div>
+
+      <div id="ctx-sources" class="cols">
+        <form id="ctx-form" class="wide stack" style="gap:16px">
+          <div class="card stack">
+            <label for="ctx-goal" style="font-size:15px">What are you trying to build?</label>
+            <textarea id="ctx-goal" name="goal" required placeholder="Add retries with exponential backoff to our webhook sender, so transient 5xx errors don't drop events."></textarea>
+            <p class="small muted">Used to rank what's relevant and to write the prompt at the end.</p>
+          </div>
+          <div class="card stack">
+            <h2>Sources</h2>
+            <div class="card stack" style="box-shadow:none;padding:16px">
+              <div class="row"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="8" r="2.5"/><path d="M6 8.5v7M18 10.5c0 4-6 3-10 6"/></svg><b>GitHub repositories</b></div>
+              <div><label for="ctx-gh">Repository URLs <span class="hint">(one per line; /tree/branch/folder works too)</span></label>
+                <textarea id="ctx-gh" name="github" placeholder="https://github.com/owner/repo" style="min-height:70px"></textarea></div>
+              <div><label for="ctx-only">Only look in <span class="hint">(folders, optional)</span></label><input id="ctx-only" name="only" placeholder="src, docs"></div>
+            </div>
+            <div class="card stack" style="box-shadow:none;padding:16px">
+              <div class="row"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><b>Websites</b></div>
+              <div class="row" style="align-items:flex-end">
+                <div style="flex:3 1 300px"><label for="ctx-sites">Start pages <span class="hint">(one per line)</span></label>
+                  <textarea id="ctx-sites" name="sites" placeholder="https://docs.example.com/guide" style="min-height:70px"></textarea></div>
+                <div style="flex:1 1 140px"><label for="ctx-pages">Up to</label><select id="ctx-pages" name="pages"><option value="10">10 pages</option><option value="25">25 pages</option><option value="3">3 pages</option><option value="1">1 page</option></select></div>
+              </div>
+              <p class="small muted">Stays on the same site and respects robots.txt.</p>
+            </div>
+          </div>
+          <div class="row"><button class="primary big">Fetch and rank</button><span class="small muted" id="ctx-state">Usually under a minute. Nothing is added to your project.</span></div>
+        </form>
+        <div class="narrow stack">
+          <div class="card stack">
+            <h2>Size of the pack</h2>
+            <label for="ctx-budget" style="font-weight:400">Aim for about <b id="ctx-budget-label">12,000</b> tokens</label>
+            <input id="ctx-budget" form="ctx-form" name="budget" type="range" min="2000" max="60000" step="1000" value="12000">
+            <p class="small muted">Smaller packs keep your model focused. You can add or drop items on the next step.</p>
+          </div>
+          <div class="card stack">
+            <h2>How Ack handles what it fetches</h2>
+            <ul class="small" style="margin:0;padding-left:18px;color:var(--ink2);display:flex;flex-direction:column;gap:6px">
+              <li>Fetched code is read, never run.</li>
+              <li>Text that tries to give instructions to an AI is flagged, and kept as quoted data.</li>
+              <li>Each item is pinned to a commit or fetch time, so you can tell when it's out of date.</li>
+              <li>Licenses are shown before you reuse anything.</li>
+            </ul>
+          </div>
+          <div class="card stack"><h2>Saved packs</h2><div id="ctx-saved"></div></div>
+        </div>
+      </div>
+      <div id="ctx-review" class="stack"></div>
+      <div id="ctx-pack"></div>
+    </section>
+
+    <!-- PEERS -->
+    <section class="view" id="peers">
+      <div class="stack" style="gap:6px"><h1>Pair with another agent</h1>
+        <p class="lead">Agents can only share with agents they've paired with. You do this once per agent.</p></div>
+      <div class="cols">
+        <div class="card wide row" style="align-items:flex-start;gap:24px">
+          <div id="invite-qr"></div>
+          <div class="stack" style="flex:1 1 260px;min-width:0">
+            <h2 style="font-size:20px">Show this to the other agent</h2>
+            <p class="muted">Scan it from their Ack, or send them the link. It carries your public keys, so the broker can't impersonate you.</p>
+            <div><button class="primary invite-btn" data-out="invite-out" type="button">Create invite</button></div>
+            <div id="invite-out" class="stack"></div>
+          </div>
+        </div>
+        <form class="card narrow stack join-form">
+          <h2 style="font-size:20px">Or join theirs</h2>
+          <label for="peer-join">Invite link</label>
+          <textarea id="peer-join" name="uri" placeholder="ack://pair?…" required style="font-family:var(--mono);font-size:13px"></textarea>
+          <div><button class="primary">Join</button></div>
+        </form>
+      </div>
+      <div class="card stack"><h2 id="paired-title" style="font-size:20px">Paired</h2><div id="peer-list" class="stack"></div></div>
+    </section>
+
+    <!-- ACTIVITY -->
+    <section class="view" id="activity">
+      <div class="stack" style="gap:6px"><h1>Activity</h1><p class="lead">What this agent has done and received, newest first.</p></div>
+      <div class="card stack"><h2>Decisions</h2><div id="provenance" class="scroll"></div></div>
+      <div class="card stack"><h2>Events</h2><div id="events" class="scroll"></div></div>
+    </section>
+
+    <!-- AUDIT -->
+    <section class="view" id="audit">
+      <div class="stack" style="gap:6px"><h1>Audit</h1>
+        <p class="lead">Checks that everything you installed still matches what its owner signed: local edits, deleted files,
+          newer versions, records that don't line up, and a corrupt cache.</p></div>
+      <div><button class="primary" id="audit-btn">Run audit</button></div>
+      <div id="audit-out"></div>
+    </section>
+  </main>
+</div>
+<div id="toasts" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+"use strict";
+const TOKEN = "__ACK_TOKEN__";
+let S = null;
+const seen = {};
+
+// ---------- helpers ----------
+// Build DOM nodes. Strings always become text nodes: peer-supplied content is never parsed as HTML.
+function el(tag, props, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (k === "class") n.className = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (v === true) n.setAttribute(k, "");
+    else if (v !== false && v != null) n.setAttribute(k, v);
+  }
+  for (const kid of kids.flat(Infinity)) {
+    if (kid == null || kid === false) continue;
+    n.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  }
+  return n;
+}
+const $ = (id) => document.getElementById(id);
+const fill = (id, ...nodes) => $(id).replaceChildren(...nodes.flat(Infinity).filter(Boolean));
+const empty = (text) => el("div", { class: "empty" }, text);
+const ago = (ts) => { if (!ts) return ""; const s = Math.max(0, Date.now() / 1000 - ts);
+  return s < 60 ? "just now" : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`; };
+const tag = (word) => el("span", { class: "tag " + word }, word);
+const groups = (fp) => el("div", { class: "fp" }, (fp.match(/.{1,4}/g) || []).map((g) => el("span", {}, g)));
+
+// Our own fixed icon shapes, drawn with createElementNS (never from data).
+const ICON = {
+  check: ["M5 12l5 5 9-10"], warn: ["M12 3l9 16H3z", "M12 10v4M12 17h.01"],
+  clock: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z", "M12 7v5l3 2"], x: ["M6 6l12 12M18 6L6 18"],
+  info: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z", "M12 8h.01M11 12h1v5h1"],
+};
+function icon(name, color = "currentColor", size = 18) {
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  for (const [k, v] of Object.entries({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: color,
+    "stroke-width": 2.2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) svg.setAttribute(k, v);
+  for (const d of ICON[name]) { const p = document.createElementNS(ns, "path"); p.setAttribute("d", d); svg.append(p); }
+  return svg;
+}
+const ok = (text) => el("li", {}, icon("check", "var(--good)"), el("span", {}, text));
+const bad = (text) => el("li", {}, icon("x", "var(--bad)"), el("span", {}, text));
+const caution = (text) => el("li", {}, icon("warn", "var(--warn)"), el("span", {}, text));
+
+async function api(path, body) {
+  const opts = { headers: { "X-Ack-Token": TOKEN } };
+  if (body !== undefined) { opts.method = "POST"; opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  const r = await fetch("/api/" + path, opts);
+  const data = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
+  if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+  return data;
+}
+function toast(text, kind = "") {
+  const t = el("div", { class: "toast " + kind }, text);
+  $("toasts").append(t);
+  setTimeout(() => t.remove(), kind === "bad" ? 7000 : 4000);
+}
+async function run(fn, okMsg) {
+  try { const r = await fn(); if (okMsg) toast(typeof okMsg === "function" ? okMsg(r) : okMsg, "good"); await refresh(); return r; }
+  catch (e) { toast(e.message, "bad"); }
+}
+// Re-render a block only when its data changed, so open <details>, scroll and inputs survive the 2 s refresh.
+function changed(key, value) { const s = JSON.stringify(value); if (seen[key] === s) return false; seen[key] = s; return true; }
+function formData(form) { return Object.fromEntries(new FormData(form).entries()); }
+function codeView(text, start = 1, diff = false) {
+  return el("div", { class: "code" }, String(text).split("\n").map((line, i) => el("div", {
+    class: "ln" + (diff ? (line.startsWith("+") && !line.startsWith("+++") ? " add" : line.startsWith("-") && !line.startsWith("---") ? " del" : line.startsWith("@@") ? " hunk" : "") : "") },
+    el("span", { class: "n" }, diff ? "" : start + i), el("span", { class: "t" }, line || " "))));
+}
+function copyText(text, what) {
+  navigator.clipboard.writeText(text).then(() => toast(`${what} copied`, "good"), () => toast("Copy failed; select the text manually", "bad"));
+}
+
+// ---------- navigation ----------
+function showTab() {
+  const id = (location.hash || "#home").slice(1);
+  const known = [...document.querySelectorAll("section.view")].some((s) => s.id === id) ? id : "home";
+  document.querySelectorAll("section.view").forEach((s) => s.classList.toggle("on", s.id === known));
+  document.querySelectorAll("#nav a").forEach((a) => {
+    const on = a.getAttribute("href") === "#" + known;
+    a.classList.toggle("on", on);
+    on ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current");
+  });
+  if (known === "parts") loadTree();
+  window.scrollTo(0, 0); // tabs are views, not anchors: don't jump to the section's position
+  if (S) render();
+}
+window.addEventListener("hashchange", showTab);
+
+// ---------- render ----------
+function render() {
+  const me = S.me;
+  $("me-name").textContent = me.name;
+  $("me-key").textContent = "key " + (me.fingerprint.match(/.{1,4}/g) || []).join(" ");
+  $("me-root").textContent = me.root.split("/").slice(-2).join("/");
+  $("me-root").title = me.root;
+  const pill = $("broker-pill");
+  pill.className = "status " + (me.broker_error ? "bad" : me.registered ? "good" : "warn");
+  pill.title = me.broker_error || me.broker;
+  pill.lastChild.textContent = me.broker_error ? "Broker unreachable" : me.registered ? "Connected to broker" : "Not registered";
+
+  const n = S.approvals.length;
+  $("approval-count").hidden = !n; $("approval-count").textContent = n;
+  $("banner").classList.toggle("on", n > 0 && location.hash !== "#approvals");
+  if (n) $("banner-text").textContent = S.approvals.map((a) => `${a.action === "install" ? "install" : "run tests for"} ${a.context.peer}/${a.context.source_id}`).join(", ");
+
+  renderHome(); renderPeerSelects(); renderAsk(); renderApprovals(); renderInstalls(); renderParts();
+  renderPeers(); renderActivity(); renderContext(); tickTimers();
+}
+
+function renderHome() {
+  $("hello").textContent = `Good to see you, ${S.me.name}`;
+  $("hello-root").textContent = S.me.root;
+  $("pair-card").hidden = S.peers.length > 0;
+  if (changed("needs", S.approvals.map((a) => [a.id, a.action]))) {
+    fill("needs", S.approvals.length ? el("section", { class: "needs stack", "aria-labelledby": "needs-h" },
+      el("h2", { id: "needs-h" }, `Needs you · ${S.approvals.length}`),
+      S.approvals.map((a) => {
+        const c = a.context, d = c.decision || {};
+        return el("div", { class: "item row" },
+          el("div", { class: "grow stack", style: "gap:2px;min-width:240px" },
+            el("b", {}, a.action === "install" ? `Install ${c.peer}/${c.source_id} v${c.version}` : `Run the tests for ${c.peer}/${c.source_id} v${c.version}?`),
+            el("span", { class: "small muted" }, a.action === "install" ? d.reason : `${c.files.length} file(s) are in quarantine, checked against ${c.peer}'s signature.`)),
+          d.action ? tag(d.action) : null,
+          el("a", { class: "btn primary", href: "#approvals" }, "Review"));
+      })) : null);
+  }
+  if (changed("latest", [S.answers[0], S.peers.length])) {
+    const a = S.answers[0];
+    fill("latest", el("h2", {}, "Latest answer"), a ? [
+      el("b", {}, a.question),
+      el("p", { class: "muted" }, a.summary || `${a.peer} has nothing that matches this. Try "what do you share?"`),
+      el("div", { class: "row small muted" }, `from ${a.peer} · v${a.version} · ${ago(a.received)}`,
+        a.sources.map((s) => el("span", { class: "chip mono" }, s)), el("span", { class: "grow" }),
+        a.sources.length ? el("button", { class: "linkbtn", type: "button", onclick: () => fillRequest(a.peer, a.sources[0]) }, "Request this part") : null),
+    ] : el("p", { class: "muted" }, S.peers.length ? "Ask a peer something and the answer shows up here." : "Pair with someone first."));
+  }
+  if (changed("recent", [S.provenance.slice(0, 6), S.peers.map((p) => p.name)])) {
+    const rows = S.provenance.slice(0, 6).map((p) => el("li", { class: "row", style: "flex-wrap:nowrap;align-items:flex-start" },
+      tag(p.decision || "NOTE"), el("span", { class: "small" }, p.role === "owner" ? `${p.peer} ${(p.decision || p.event || "").toLowerCase()} your ${p.source_id}` : `${p.peer}/${p.source_id}${p.version ? " v" + p.version : ""}${p.reason ? ": " + p.reason : ""}`)));
+    const paired = S.peers.map((p) => el("li", { class: "row" }, tag("PAIRED"), el("span", { class: "small" }, `with ${p.name}`)));
+    fill("recent", rows.length || paired.length ? el("ul", { class: "stack", style: "list-style:none;margin:0;padding:0;gap:10px" }, rows, paired) : el("p", { class: "muted small" }, "Nothing yet."));
+  }
+}
+
+function fillRequest(peer, part) {
+  location.hash = "#ask";
+  const f = $("request-form"); f.peer.value = peer; f.source_id.value = part;
+  setTimeout(() => f.reason.focus(), 50);
+}
+
+function renderPeerSelects() {
+  if (!changed("peerselect", S.peers.map((p) => p.name))) return;
+  document.querySelectorAll(".peer-select").forEach((sel) => {
+    const keep = sel.value;
+    sel.replaceChildren(...(S.peers.length ? S.peers.map((p) => el("option", { value: p.name }, p.name))
+      : [el("option", { value: "" }, "pair with someone first")]));
+    if (keep) sel.value = keep;
+  });
+  const allow = document.querySelector(".allow-input");
+  if (!allow.value && S.peers.length) allow.placeholder = S.peers.map((p) => p.name).join(", ");
+}
+
+function renderAsk() {
+  if (changed("hints", [S.hints, S.peers.length])) fill("hints", S.hints.length && S.peers.length ? [el("span", { class: "muted" }, "Try:"),
+    S.hints.map((h) => el("button", { class: "chip", type: "button", onclick: () => { const f = $("ask-form"); f.text.value = h; f.exact.value = ""; f.requestSubmit(); } }, h))] : null);
+  if (changed("answers", [S.answers, S.waiting_answers])) {
+    fill("answers", S.waiting_answers ? el("p", { class: "muted" }, `Waiting for ${S.waiting_answers} answer(s)…`) : null,
+      S.answers.length ? S.answers.map((a) => el("div", { class: "card stack", style: "gap:10px" },
+        el("div", { class: "row" }, el("b", { class: "grow" }, a.question), el("span", { class: "small muted" }, `${a.peer} · ${ago(a.received)}`)),
+        a.typed ? el("p", { class: "small muted" }, "You typed: ", a.typed, " (spelling fixed before sending)") : null,
+        el("p", { class: a.summary ? "" : "muted" }, a.summary || `${a.peer} has nothing that matches this. Try "what do you share?", or ask about what they shared.`),
+        el("div", { class: "row small" },
+          a.sources.length ? el("span", { class: "muted" }, "Sources:") : null,
+          a.sources.map((s) => el("button", { class: "chip mono", type: "button", title: "Request this part", onclick: () => fillRequest(a.peer, s) }, s)),
+          el("span", { class: "grow" }), el("span", { class: "muted" }, "confidence"),
+          el("span", { class: "match" }, el("i", { style: `width:${Math.round(a.confidence * 100)}%` })), el("span", { class: "muted" }, `v${a.version}`))))
+      : (S.waiting_answers ? null : empty("Answers to your questions appear here.")));
+  }
+  if (changed("requests", S.requests)) fill("requests", S.requests.length ? [el("p", { class: "muted" }, "Waiting on:"),
+    S.requests.map((r) => el("div", { class: "row" }, el("span", { class: "chip mono" }, `${r.peer}/${r.source_id}`), el("span", { class: "muted" }, r.intent)))] : null);
+}
+
+// ---------- approvals: one focused review ----------
+const apvTab = {};
+function renderApprovals() {
+  if (!changed("approvals", S.approvals.map((a) => a.id))) return;
+  drawApproval();
+}
+function tickTimers() {
+  document.querySelectorAll("[data-deadline]").forEach((n) => {
+    const left = Math.max(0, Math.ceil((+n.dataset.deadline - Date.now() / 1000) / 60));
+    n.lastChild.textContent = `Refused automatically in ${left} min`;
+  });
+}
+function drawApproval() {
+  if (!S.approvals.length) return fill("approval-view", el("div", { class: "stack", style: "gap:6px" }, el("h1", {}, "Approvals"),
+    el("p", { class: "lead" }, "Received code waits here. First you decide whether its tests may run in the sandbox, then whether it may enter your project.")),
+    empty("Nothing waiting. When received code arrives, you'll review it here."));
+  const a = S.approvals[0], c = a.context, install = a.action === "install";
+  const r = c.report || {}, d = c.decision || {};
+  const decide = (yes) => run(() => api("approve", { id: a.id, approve: yes }), yes ? (install ? "Installing" : "Tests approved; running them now") : "Rejected");
+  const files = install ? (r.preview || {}) : (c.preview || {});
+  const tabs = [...Object.keys(files), ...(install && r.diff ? ["Changes"] : [])];
+  const current = tabs.includes(apvTab[a.id]) ? apvTab[a.id] : tabs[0];
+  const pick = (name) => { apvTab[a.id] = name; drawApproval(); };
+  const step = (label, state) => el("li", { class: "pill " + state }, state === "good" ? icon("check", "currentColor", 14) : null, label);
+  const checks = install ? [
+    ok(`Signed by ${c.peer}`),
+    r.hashes_ok ? ok(`All ${c.files.length} files match their hashes`) : bad("Some files don't match their hashes"),
+    r.missing_deps && r.missing_deps.length ? bad(`Missing: ${r.missing_deps.join(", ")}`) : ok(c.deps && c.deps.length ? "Dependencies are installed" : "No dependencies to install"),
+    r.tests_passed ? ok("Tests passed in the sandbox") : bad("Tests failed in the sandbox"),
+    r.conflicts && r.conflicts.length ? caution(`You already have ${r.conflicts.join(", ")}, so it won't overwrite yours`) : null,
+  ] : [
+    ok(`Signed by ${c.peer}`),
+    ok(`All ${c.files.length} files match their hashes`),
+    c.deps && c.deps.length ? caution(`Needs: ${c.deps.join(", ")} (checked before install)`) : ok("No dependencies"),
+    caution("Running the tests executes their code on this machine"),
+  ];
+  const happens = install
+    ? (d.action === "ADAPT" ? `The files are copied to vendor/${c.peer}/${c.source_id}/ with a BUILT_ON.md that records the source and version. Your own files stay as they are.`
+      : `${c.files.length} file(s) are copied into your project at their own paths${r.diff ? ", replacing the version you have" : ""}.`)
+    : "The tests run in the quarantine folder with none of your environment variables, and with CPU, memory and time limits. They can still read files and use the network, so read the code first.";
+  fill("approval-view",
+    el("div", { class: "row" },
+      el("h1", { class: "grow" }, install ? `Install ${c.peer}/${c.source_id} v${c.version}?` : `Run the tests for ${c.peer}/${c.source_id} v${c.version}?`),
+      install && d.action ? el("span", { class: "tag " + d.action }, d.action === "ADAPT" ? `ADAPT · into vendor/${c.peer}/${c.source_id}/` : d.action) : null,
+      el("span", { class: "pill warn", "data-deadline": a.created + 15 * 60 }, icon("clock", "currentColor", 14), el("span", {}, ""))),
+    el("ol", { class: "steps", "aria-label": "Progress" },
+      step("Checked", "good"), step(install ? "Tests run" : "2 · Run tests?", install ? "good" : "dark"), step("3 · Install?", install ? "dark" : "idle")),
+    c.intent ? el("p", { class: "muted" }, "Your intent: ", c.intent) : null,
+    el("div", { class: "cols" },
+      el("section", { class: "card wide", style: "padding:0;overflow:hidden", "aria-label": "Received files" },
+        el("div", { class: "tabs", role: "tablist", "aria-label": "Files" }, tabs.map((t) =>
+          el("button", { type: "button", role: "tab", "aria-selected": String(t === current), onclick: () => pick(t) }, t)),
+          el("span", { class: "grow" }), el("span", { class: "small muted", style: "align-self:center;padding-right:8px" },
+            `${c.files.length} file(s) · ${c.files.reduce((s, f) => s + f.size, 0).toLocaleString()} bytes`)),
+        current === "Changes" ? codeView(r.diff, 1, true) : current ? codeView(files[current]) : el("p", { class: "muted", style: "padding:16px" }, "No preview."),
+        el("div", { class: "row small muted", style: "border-top:1px solid var(--line);padding:12px 16px;flex-wrap:nowrap;align-items:flex-start" },
+          icon("info"), el("span", {}, "This is the other agent's code, shown as text. Nothing in it is followed as an instruction."))),
+      el("aside", { class: "narrow stack", "aria-label": "Decision" },
+        el("section", { class: "card stack" }, el("h2", {}, "Checks"), el("ul", { class: "checks" }, checks),
+          install && r.test_output ? el("details", {}, el("summary", {}, "Test output"), el("pre", { class: "small" }, r.test_output)) : null,
+          !install && c.tests && c.tests.cmd ? el("div", { class: "small" }, "Test command: ", el("code", {}, c.tests.cmd.join(" "))) : null),
+        el("section", { class: "card stack" }, el("h2", {}, install ? "What happens if you install" : "What running the tests does"), el("p", { class: "muted" }, happens)),
+        el("div", { class: "stack", style: "gap:10px" },
+          el("button", { class: "primary big", type: "button", onclick: () => decide(true) },
+            install ? (d.action === "ADAPT" ? "Install under vendor/" : "Install into project") : "Run tests in sandbox"),
+          el("button", { class: "danger big", type: "button", onclick: () => decide(false) }, "Reject")))),
+    S.approvals.length > 1 ? el("p", { class: "muted small" }, `${S.approvals.length - 1} more waiting after this one.`) : null);
+  tickTimers();
+}
+
+function renderInstalls() {
+  if (!changed("installs", [S.installs, S.updates])) return;
+  if (!S.installs.length) return fill("install-list", empty("Nothing installed yet. Request a part on the Ask & request page."));
+  fill("install-list", S.installs.map((i) => {
+    const key = `${i.peer}/${i.source_id}`, up = S.updates[key], newer = up && up.version > i.version;
+    return el("div", { class: "card stack" },
+      el("div", { class: "row" }, el("h2", {}, key), el("span", { class: "chip" }, `v${i.version}`), tag(i.action),
+        newer ? el("span", { class: "pill warn" }, `v${up.version} offered`) : null),
+      i.intent ? el("p", { class: "small muted" }, "Intent: ", i.intent) : null,
+      el("details", {}, el("summary", {}, `${Object.keys(i.files).length} file(s)`),
+        el("ul", { class: "small mono" }, Object.values(i.files).map((f) => el("li", {}, f.installed_at)))),
+      up ? el("details", {}, el("summary", {}, `Update notice: v${up.version}, changed ${up.changed.join(", ") || "nothing"}`), codeView(up.diff || "(no diff)", 1, true)) : null);
+  }));
+}
+
+function renderParts() {
+  if (!changed("parts", S.parts)) return;
+  if (!S.parts.length) return fill("part-list", empty("You're not sharing anything yet. Use the form below."));
+  fill("part-list", S.parts.map((p) => el("div", { class: "card stack" },
+    el("div", { class: "row" }, el("h2", {}, p.id), el("span", { class: "chip" }, `v${p.version}`),
+      p.current ? el("span", { class: "pill good" }, "current") : el("span", { class: "pill warn" }, "files changed"),
+      el("span", { class: "grow" }),
+      el("button", { class: p.current ? "" : "primary", type: "button", disabled: p.current, title: p.current ? "Nothing changed since this version" : "Record a new version and notify holders",
+        onclick: () => run(() => api("update", { source_id: p.id }), (r) => `v${p.version + 1} recorded; ${r.notified} peer(s) notified`) }, "Publish update"),
+      el("button", { class: "danger", type: "button", onclick: () => confirm(`Stop sharing ${p.id}? Peers who already have it keep their copy.`) && run(() => api("unshare", { id: p.id }), "No longer shared") }, "Stop sharing")),
+    el("p", {}, el("b", {}, p.topic), " ", el("span", { class: "muted" }, p.summary)),
+    el("div", { class: "row small" }, "Files:", p.files.map((f) => el("span", { class: "chip mono" }, (p.base ? p.base + "/" : "") + f))),
+    el("div", { class: "row small" }, "Who may request:", p.allow.length ? p.allow.map((x) => el("span", { class: "chip" }, x)) : el("span", { class: "muted" }, "nobody (private)"),
+      el("span", { style: "margin-left:12px" }, "Held by:"), Object.keys(p.holders).length ? Object.keys(p.holders).map((w) => el("span", { class: "chip" }, w)) : el("span", { class: "muted" }, "nobody yet")),
+    p.tests ? null : el("p", { class: "small", style: "color:var(--warn-text)" }, "No test command: peers will be told it can't be verified."))));
+}
+
+function renderPeers() {
+  if (!changed("peers", [S.peers, S.open_invites])) return;
+  $("paired-title").textContent = `Paired · ${S.peers.length}`;
+  fill("peer-list", S.peers.length ? S.peers.map((p) => el("div", { class: "row", style: "border-top:1px solid var(--line);padding-top:14px;gap:16px 28px" },
+    el("div", { class: "stack", style: "gap:2px;flex:1 1 140px" }, el("b", {}, p.name),
+      p.checked ? el("span", { class: "small", style: "color:var(--good-text)" }, "Key checked with them") : el("span", { class: "small muted" }, "Key not checked yet")),
+    el("div", { class: "stack", style: "gap:6px;flex:2 1 300px" },
+      el("span", { class: "small", style: "font-weight:600;color:var(--ink2)" }, "Check it's really them: read these to each other"), groups(p.fingerprint)),
+    p.checked ? el("span", { class: "pill good" }, icon("check", "currentColor", 14), "Checked")
+      : el("button", { type: "button", onclick: () => run(() => api("check-peer", { peer: p.name }), `Marked ${p.name} as checked`) }, "Mark as checked")))
+    : empty(S.open_invites ? "Invite created; waiting for someone to join." : "No peers yet."));
+}
+
+function renderActivity() {
+  if (changed("events", S.events)) {
+    const kinds = { error: "REJECT", dropped: "REJECT", decided: "ADAPT", paired: "ADOPT" };
+    fill("events", S.events.length ? el("table", {}, S.events.map((e) => el("tr", {},
+      el("td", { style: "width:110px" }, el("span", { class: "tag " + (kinds[e.kind] || "NOTE") }, e.kind)), el("td", { class: "small" }, e.text))))
+      : el("p", { class: "muted" }, "Nothing yet."));
+  }
+  if (changed("prov", S.provenance)) {
+    fill("provenance", S.provenance.length ? el("table", {},
+      el("tr", {}, el("th", {}, "When"), el("th", {}, "Part"), el("th", {}, "Outcome"), el("th", {}, "Reason")),
+      S.provenance.map((p) => el("tr", {}, el("td", { class: "small" }, ago(p.ts)), el("td", {}, `${p.peer}/${p.source_id}${p.version ? " v" + p.version : ""}`),
+        el("td", {}, p.decision ? tag(p.decision) : el("span", { class: "small muted" }, p.event)), el("td", { class: "small" }, p.reason || ""))))
+      : el("p", { class: "muted" }, "Decisions you make, and peers make about your parts, are recorded here."));
+  }
+}
+
+// ---------- context packs: Sources -> Review -> Pack ----------
+let ctxSel = new Set(), ctxJob = null, ctxView = null, ctxFilter = "all", ctxStep = "sources";
+const ctxItems = () => (S.context.items || []);
+function setCtxStep(step) {
+  if (step !== ctxStep) window.scrollTo(0, 0);
+  ctxStep = step; seen["ctx-review"] = seen["ctx-pack"] = null; renderContext();
+}
+function ctxMeter() {
+  const used = ctxItems().filter((i) => ctxSel.has(i.id)).reduce((a, i) => a + i.tokens, 0);
+  const budget = S.context.budget || 1, pct = Math.min(100, Math.round(used / budget * 100));
+  return el("div", { class: "card stack", style: "padding:12px 14px;gap:8px;min-width:280px" },
+    el("div", { class: "row small" }, el("b", {}, `${ctxSel.size} selected`), el("span", { class: "grow" }),
+      el("span", { class: "muted" }, `about ${used.toLocaleString()} of ${budget.toLocaleString()} tokens`)),
+    el("div", { class: "meter" + (used > budget ? " over" : ""), role: "img", "aria-label": `${pct} percent of the token budget` }, el("i", { style: `width:${pct}%` })));
+}
+function renderContext() {
+  const c = S.context;
+  if (c.job !== ctxJob && c.state === "ready") { // new results: start from Ack's pre-selection
+    ctxJob = c.job; ctxView = null; ctxFilter = "all";
+    ctxSel = new Set(c.items.filter((i) => i.selected).map((i) => i.id));
+    return setCtxStep("review");
+  }
+  $("ctx-state").textContent = c.state === "running" ? "Fetching and ranking… usually under a minute."
+    : "Usually under a minute. Nothing is added to your project.";
+  const steps = [["sources", "1 · Sources"], ["review", "2 · Review"], ["pack", "3 · Pack"]];
+  const at = steps.findIndex(([k]) => k === ctxStep);
+  if (changed("ctx-steps", ctxStep)) fill("ctx-steps", steps.map(([k, label], i) =>
+    el("li", { class: "pill " + (i === at ? "dark" : i < at ? "good" : "idle"), "aria-current": i === at ? "step" : null }, label)));
+  $("ctx-sources").style.display = ctxStep === "sources" ? "" : "none";
+  if (changed("ctx-review", [ctxStep, c.state, c.job, c.error, c.errors])) drawReview();
+  if (changed("ctx-pack", [ctxStep, c.pack])) drawPack();
+  if (changed("ctx-saved", c.saved)) fill("ctx-saved", c.saved.length ? c.saved.map((p) => el("div", { class: "row", style: "border-top:1px solid var(--line);padding-top:10px" },
+    el("div", { class: "grow stack", style: "gap:0;min-width:160px" }, el("b", {}, p.name), el("span", { class: "small muted" }, `${p.items} excerpt(s) · ${ago(p.created)}`)),
+    el("button", { type: "button", onclick: () => run(() => api("context/open", { file: p.file })).then((r) => r && setCtxStep("pack")) }, "Open")))
+    : el("p", { class: "small muted" }, "Packs you build are saved in this project's .ack/context folder."));
+}
+function drawReview() {
+  const c = S.context;
+  if (ctxStep === "sources" && c.state === "error") return fill("ctx-review", el("div", { class: "card", style: "border-color:var(--bad)" },
+    el("b", {}, "Couldn't build a candidate list. "), c.error));
+  if (ctxStep !== "review" || c.state !== "ready") return fill("ctx-review");
+  const isGit = (i) => i.source.startsWith("github.com/");
+  const counts = { all: c.items.length, github: c.items.filter(isGit).length, web: c.items.filter((i) => !isGit(i)).length,
+    flagged: c.items.filter((i) => i.flagged.length).length };
+  const visible = c.items.filter((i) => ctxFilter === "all" || (ctxFilter === "github" ? isGit(i) : ctxFilter === "web" ? !isGit(i) : i.flagged.length));
+  const chip = (key, label) => el("button", { type: "button", class: "chip", "aria-pressed": String(ctxFilter === key),
+    style: ctxFilter === key ? "background:var(--ink);color:var(--bg);border-color:var(--ink)" : key === "flagged" && counts.flagged ? "background:var(--warn-soft);color:var(--warn-text);border-color:var(--warn-line)" : "",
+    onclick: () => { ctxFilter = key; drawReview(); } }, `${label} · ${counts[key]}`);
+  const list = visible.map((it) => {
+    const box = el("input", { type: "checkbox", "aria-label": `Include ${it.path}`, style: "margin-top:3px;flex:none" });
+    box.checked = ctxSel.has(it.id);
+    box.addEventListener("change", () => { box.checked ? ctxSel.add(it.id) : ctxSel.delete(it.id); fill("ctx-meter", ctxMeter()); });
+    return el("article", { class: "card ctx-item" + (it.flagged.length ? " flagged" : "") + (ctxView === it.id ? " viewing" : ""), "data-id": it.id, style: "padding:16px" }, box,
+      el("div", { class: "stack", style: "gap:6px;flex:1;min-width:0" },
+        el("div", { class: "row", style: "gap:8px" }, el("span", { class: "mono", style: "font-size:14px;font-weight:500" }, it.kind === "code" ? `${it.path}  L${it.start}–${it.end}` : it.title),
+          el("span", { class: "chip" }, isGit(it) ? "GitHub" : "Website"), el("span", { class: "chip" }, it.license),
+          it.flagged.length ? el("span", { class: "pill bad", style: "padding:2px 8px" }, "Flagged") : null),
+        it.flagged.length ? el("p", { class: "small", style: "color:var(--warn-text)" },
+          `Contains text addressed to an AI ("${it.flagged[0]}"). Left out by default; if you include it, it's quoted as data and labelled.`) : null,
+        el("p", { class: "small", style: "color:var(--ink2)" }, `Why: ${it.why}.`),
+        el("div", { class: "row small muted", style: "gap:14px" }, el("span", {}, "match ", el("span", { class: "match" }, el("i", { style: `width:${Math.round(it.score * 100)}%` }))),
+          `~${it.tokens.toLocaleString()} tokens`, isGit(it) ? el("span", { class: "mono" }, `@ ${it.pinned}`) : `fetched ${it.pinned.slice(0, 10)}`,
+          el("span", { class: "grow" }), el("button", { type: "button", class: "linkbtn", onclick: () => previewItem(it) }, "Preview"))));
+  });
+  const nameInput = el("input", { id: "ctx-name", placeholder: "pack name (optional)", "aria-label": "Pack name", style: "max-width:280px" });
+  fill("ctx-review",
+    el("div", { class: "row", style: "align-items:flex-end" },
+      el("div", { class: "grow stack", style: "gap:4px" }, el("h2", { style: "font-size:22px;font-family:var(--display);font-weight:800" }, "Review what was found"),
+        el("p", { class: "small muted" }, `Goal: ${c.goal}`)), el("div", { id: "ctx-meter" }, ctxMeter())),
+    c.errors.length ? el("p", { class: "small", style: "color:var(--warn-text)" }, "Skipped: " + c.errors.join("; ")) : null,
+    el("div", { class: "row", style: "gap:8px" }, chip("all", "All"), chip("github", "GitHub"), chip("web", "Website"), chip("flagged", "Flagged")),
+    el("div", { class: "cols" },
+      el("div", { class: "wide stack", style: "gap:10px" }, list.length ? list : empty("Nothing in this filter.")),
+      el("aside", { class: "card narrow", id: "ctx-preview", style: "padding:0;overflow:hidden", "aria-label": "Preview" },
+        el("p", { class: "muted small", style: "padding:16px" }, "Choose Preview on an item to read it here. Read only: fetched code is never run."))),
+    c.total > c.items.length ? el("p", { class: "small muted" }, `Showing the best ${c.items.length} of ${c.total}.`) : null,
+    el("div", { class: "row" }, nameInput,
+      el("button", { class: "primary big", type: "button", onclick: () => run(() => api("context/build", { ids: [...ctxSel], name: nameInput.value }),
+        (r) => `Pack built: ${r.items} excerpt(s), about ${r.tokens.toLocaleString()} tokens`).then((r) => r && setCtxStep("pack")) }, "Build the pack"),
+      el("button", { type: "button", class: "linkbtn", onclick: () => setCtxStep("sources") }, "Change sources")));
+}
+async function previewItem(it) {
+  ctxView = it.id;
+  const r = await run(() => api("context/preview", { id: it.id }));
+  if (!r) return;
+  document.querySelectorAll(".ctx-item.viewing").forEach((n) => n.classList.remove("viewing"));
+  const card = document.querySelector(`.ctx-item[data-id="${CSS.escape(it.id)}"]`);
+  if (card) card.classList.add("viewing");
+  fill("ctx-preview", el("div", { class: "row", style: "padding:12px 16px;border-bottom:1px solid var(--line)" },
+      el("span", { class: "mono grow" }, it.path), el("span", { class: "small muted" }, it.kind === "code" ? `lines ${it.start}–${it.end}` : "")),
+    it.kind === "code" ? codeView(r.text, r.start) : el("pre", { style: "border:0;border-radius:0;max-height:560px;white-space:pre-wrap" }, r.text),
+    el("p", { class: "small muted", style: "padding:12px 16px;border-top:1px solid var(--line)" }, "Read only. Fetched code is never run, and nothing here is copied into your project."));
+}
+function drawPack() {
+  const p = S.context.pack;
+  if (ctxStep !== "pack" || !p) return fill("ctx-pack");
+  const download = () => {
+    const a = el("a", { href: URL.createObjectURL(new Blob([p.markdown], { type: "text/markdown" })), download: p.path.split("/").pop() });
+    document.body.append(a); a.click(); a.remove();
+  };
+  const refs = p.markdown.includes("## Reference material") ? "## Reference material" + p.markdown.split("## Reference material")[1] : "";
+  const lic = Object.entries(p.licenses || {}).map(([k, v]) => `${v} × ${k}`).join(", ");
+  fill("ctx-pack", el("div", { class: "cols" },
+    el("article", { class: "card wide", style: "padding:0;overflow:hidden" },
+      el("div", { class: "row", style: "padding:18px 22px;border-bottom:1px solid var(--line)" },
+        el("h2", { class: "grow", style: "font-family:var(--display);font-weight:800;font-size:26px" }, p.name),
+        el("span", { class: "small muted" }, `${p.items} excerpt(s) · about ${p.tokens.toLocaleString()} tokens`)),
+      el("pre", { class: "packdoc", style: "border:0;border-radius:0;background:var(--panel)" }, p.markdown)),
+    el("aside", { class: "narrow stack" },
+      el("section", { class: "card stack", style: "gap:10px" }, el("h2", {}, "Use it"),
+        el("button", { class: "primary big", type: "button", onclick: () => copyText(p.prompt + "\n\n" + refs, "Prompt with references") }, "Copy prompt"),
+        el("button", { type: "button", onclick: () => copyText(p.markdown, "Whole pack") }, "Copy whole pack"),
+        el("button", { type: "button", onclick: download }, "Download .md"),
+        el("p", { class: "small muted" }, "Saved to ", el("span", { class: "mono" }, p.path))),
+      el("section", { class: "card stack" }, el("h2", {}, "Keeping it fresh"),
+        el("p", { class: "small muted" }, "Every item is pinned to a commit or a fetch time. Check whether any source has moved on since this pack was built."),
+        el("div", {}, el("button", { type: "button", class: "linkbtn", onclick: () => checkPack(p.file) }, "Check for changes now"))),
+      el("section", { class: "card stack" }, el("h2", {}, "Sources and licenses"),
+        el("ul", { class: "small mono", style: "margin:0;padding-left:18px" }, (p.sources || []).map((s) => el("li", {}, s))),
+        lic ? el("p", { class: "small muted" }, `${lic}. Check terms before copying code into your project.`) : null),
+      el("div", {}, el("button", { type: "button", class: "linkbtn", onclick: () => setCtxStep("sources") }, "Start a new pack")))));
+}
+async function checkPack(file) {
+  const r = await run(() => api("context/check", { file }));
+  if (!r) return;
+  const moved = r.results.filter((x) => x.status !== "current");
+  toast(moved.length ? `${moved.length} item(s) changed upstream: ${moved[0].status}` : "Everything in this pack is still current", moved.length ? "bad" : "good");
+}
+
+// ---------- forms and buttons ----------
+async function createInvite(outId) {
+  const r = await run(() => api("invite", {}), "One-time invite created");
+  if (!r) return;
+  const qr = el("div", { class: "qr", title: "Scan with the other agent's device, or copy the link" });
+  if (r.svg) qr.innerHTML = r.svg; // drawn by the server from our own invite link
+  else if (typeof qrcode === "function") { const q = qrcode(0, "M"); q.addData(r.uri); q.make(); qr.innerHTML = q.createSvgTag({ cellSize: 4, margin: 2 }); }
+  const hasQr = qr.childNodes.length > 0;
+  const out = [
+    el("pre", { class: "small", style: "white-space:pre-wrap;word-break:break-all" }, r.uri),
+    el("div", { class: "row" }, el("button", { type: "button", class: "primary", onclick: () => copyText(r.uri, "Link") }, "Copy link"),
+      el("button", { type: "button", onclick: () => createInvite(outId) }, "New invite")),
+    el("p", { class: "small muted" }, "Works once. Send the link privately: anyone with it can pair with you until it's used."),
+  ];
+  if (outId === "invite-out") { fill("invite-qr", hasQr ? qr : null); fill(outId, out); }
+  else fill(outId, hasQr ? qr : el("p", { class: "small", style: "color:var(--warn-text)" }, "QR code unavailable (install the qrcode package). The link works the same."), out);
+}
+document.querySelectorAll(".invite-btn").forEach((b) => b.addEventListener("click", () => createInvite(b.dataset.out)));
+document.querySelectorAll(".join-form").forEach((f) => f.addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  run(() => api("join", formData(ev.target)), "Joined. Pairing completes within a few seconds.").then((r) => r && ev.target.reset());
+}));
+$("ctx-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  run(() => api("context/start", formData(ev.target)), "Fetching. You'll move to review when it's done.");
+});
+$("ctx-budget").addEventListener("input", (ev) => { $("ctx-budget-label").textContent = (+ev.target.value).toLocaleString(); });
+// ---------- spelling: preview the fixes as you type, send the corrected question ----------
+function attachSpell(formId, previewId) {
+  const form = $(formId), input = form.text, exact = form.exact, out = $(previewId);
+  let timer = null, seq = 0;
+  const show = (r) => {
+    if (exact.value) return fill(previewId, el("span", { class: "muted" }, "Sending exactly as typed."),
+      el("button", { type: "button", class: "linkbtn", onclick: () => { exact.value = ""; check(); } }, "Fix spelling"));
+    if (!r || !r.changes.length) return fill(previewId);
+    const fixed = new Set(r.changes.map(([, b]) => b.toLowerCase()));
+    const words = r.text.split(/(\s+)/).map((w) => fixed.has(w.replace(/[^A-Za-z']/g, "").toLowerCase()) ? el("b", {}, w) : w);
+    fill(previewId, el("span", { class: "muted" }, "Will ask:"), el("span", {}, words),
+      el("button", { type: "button", class: "linkbtn", onclick: () => { exact.value = "1"; show(null); } }, "Use my spelling"));
+  };
+  const check = async () => {
+    const mine = ++seq, text = input.value.trim();
+    if (!text) return fill(previewId);
+    try { const r = await api("spell", { text }); if (mine === seq) show(r); } catch (e) { /* spelling is a nicety; never block asking */ }
+  };
+  input.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(check, 300); });
+  form.addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    run(() => api("ask", formData(form)), (r) => {
+      const fixes = r.changes.length ? ` Spelling fixed: ${r.changes.map(([a, b]) => `${a} → ${b}`).join(", ")}.` : "";
+      return (r.cached ? "Answered from cache." : "Question sent; the answer will appear shortly.") + fixes;
+    }).then((r) => { if (r) { input.value = ""; exact.value = ""; fill(previewId); } });
+  });
+}
+attachSpell("ask-form", "ask-spell");
+attachSpell("home-ask", "home-spell");
+$("request-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  run(() => api("request", formData(ev.target)), "Request sent. If the owner agrees, you'll get an approval to review.").then((r) => r && ev.target.reset());
+});
+$("share-form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  run(() => api("share", formData(ev.target)), "Shared").then((r) => r && ev.target.reset());
+});
+$("audit-btn").addEventListener("click", async () => {
+  const r = await run(() => api("audit", {}));
+  if (!r) return;
+  fill("audit-out", r.findings.length ? el("div", { class: "card scroll" }, el("table", {},
+    el("tr", {}, el("th", {}, "Finding"), el("th", {}, "Part"), el("th", {}, "Detail")),
+    r.findings.map((f) => el("tr", {}, el("td", {}, el("span", { class: "pill " + (f.kind === "stale" ? "warn" : "bad") }, f.kind)), el("td", {}, f.source), el("td", { class: "small" }, f.detail)))))
+    : el("div", { class: "card row" }, el("span", { class: "pill good" }, icon("check", "currentColor", 14), "All clear"), el("span", {}, "Everything you hold matches what its owner signed.")));
+});
+
+let treeLoaded = false;
+async function loadTree() {
+  if (treeLoaded) return;
+  try {
+    const { files } = await api("tree");
+    treeLoaded = true;
+    const draw = () => {
+      const base = $("share-base").value.trim().replace(/\/+$/, "");
+      const list = files.filter((f) => !base || f.startsWith(base + "/")).slice(0, 400);
+      fill("tree", list.length ? list.map((f) => el("button", { type: "button", onclick: () => {
+        const rel = base ? f.slice(base.length + 1) : f, box = $("share-files");
+        if (!box.value.split("\n").includes(rel)) box.value = (box.value.trim() ? box.value.trim() + "\n" : "") + rel;
+      } }, f)) : el("div", { class: "muted small", style: "padding:6px" }, "No files in that folder."));
+    };
+    $("share-base").addEventListener("input", draw);
+    draw();
+  } catch (e) { toast(e.message, "bad"); }
+}
+
+// ---------- refresh loop ----------
+async function refresh() {
+  try { S = await api("status"); render(); }
+  catch (e) { const pill = $("broker-pill"); pill.className = "status bad"; pill.lastChild.textContent = "App not responding"; }
+}
+showTab();
+refresh();
+setInterval(refresh, 2000);
+setInterval(tickTimers, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
+
+# Local data and secrets
+data/
+.ack/
+*.db
+*.parquet
+*.token
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+
+# Build output and dependencies
+deploy/out/
+site/dist/
+site/node_modules/
+web/node_modules/
+
+# Separate projects in this folder, not part of Ack01
+Ledger/
+research-results.json
