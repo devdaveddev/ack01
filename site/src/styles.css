@@ -446,3 +446,54 @@ ol { padding: 0; list-style: none; }
 .context__head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .context__name { font-family: var(--f-display); font-weight: 700; font-size: 17px; }
 .context__pre { margin: 0; max-height: 480px; overflow: auto; padding: 16px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font-family: var(--f-type); font-size: 13px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* two live agents */
+.duo { background: var(--bg); border-top: 1px solid var(--line); }
+.duo__inner { display: flex; flex-direction: column; gap: 20px; padding-block: var(--section); }
+.duo__intro { max-width: 70ch; color: var(--ink-2); }
+.duo__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.duo__state { font-size: 14px; color: var(--dim); }
+.duo__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); gap: 20px; }
+.duo__agent { display: flex; flex-direction: column; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); min-width: 0; }
+.duo__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.duo__head h3 { font-family: var(--f-display); font-size: 18px; text-transform: capitalize; }
+.duo__status { font-size: 13px; color: var(--dim); text-align: right; }
+.duo__status.is-live::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--green); }
+.duo__log { display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; padding: 4px 2px; }
+.duo__ev { display: grid; grid-template-columns: 78px 1fr; gap: 8px; font-size: 13.5px; line-height: 1.45; }
+.duo__kind { font-family: var(--f-type); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--blue-dark); padding-top: 2px; }
+.duo__text { overflow-wrap: anywhere; }
+.duo__ev--test .duo__kind { color: var(--green); }
+.duo__ev.is-bad .duo__kind, .duo__ev.is-bad .duo__text, .duo .is-bad { color: var(--red-text); }
+.duo__empty { font-size: 14px; color: var(--dim); }
+.duo__files { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.duo__files h4 { margin: 0; font-size: 13px; color: var(--dim); font-weight: 600; }
+.duo__files ul { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.duo__file { min-height: 36px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); font-family: var(--f-type); font-size: 13px; cursor: pointer; text-align: left; width: 100%; }
+.duo__file:hover { border-color: var(--blue); }
+.duo__file em { font-family: var(--f-body); font-style: normal; color: var(--blue-dark); margin-left: 6px; }
+.duo__code { margin: 6px 0 0; padding: 12px; border-radius: 4px; background: var(--night); color: var(--night-text); font-family: var(--f-type); font-size: 12.5px; overflow-x: auto; white-space: pre; }
+.duo__wire { padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); display: flex; flex-direction: column; gap: 10px; }
+.duo__wire h3, .duo__result h3 { font-family: var(--f-display); font-size: 17px; }
+.duo__note { font-size: 14px; color: var(--dim); max-width: 70ch; }
+.duo__wire ol { display: flex; flex-direction: column; gap: 4px; max-height: 300px; overflow-y: auto; }
+.duo__wire li { display: grid; grid-template-columns: 56px 20px minmax(110px, 1fr) 20px 56px; gap: 6px; align-items: center; font-size: 13.5px; }
+.duo__from, .duo__to { font-family: var(--f-type); font-size: 12.5px; color: var(--dim); }
+.duo__arrow { color: var(--blue); text-align: center; }
+.duo__msg { font-weight: 600; }
+.duo__result { padding: 18px; border: 1px solid var(--blue); border-radius: 8px; background: var(--blue-tint); display: flex; flex-direction: column; gap: 8px; }
+.duo__result ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+
+.duo__step { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14.5px; cursor: pointer; }
+.duo__step input { width: 18px; height: 18px; }
+.duo__card { position: sticky; top: 12px; z-index: 5; display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 2px solid var(--blue); border-radius: 8px; background: #fff; box-shadow: 0 10px 30px rgba(29, 42, 57, 0.18); }
+.duo__card h3 { font-family: var(--f-display); font-size: 19px; }
+.duo__card dl { display: grid; gap: 4px; }
+.duo__card dt { margin-top: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--blue-dark); }
+.duo__card dd { margin: 0; max-width: 78ch; font-size: 15px; }
+.duo__card button { align-self: flex-start; }
+.duo__recap { margin-top: 6px; font-size: 14.5px; }
+.duo__recap summary { cursor: pointer; min-height: 36px; font-weight: 600; color: var(--blue-dark); }
+.duo__recap section { margin-top: 10px; display: grid; gap: 4px; }
+.duo__recap h4 { margin: 0; font-size: 14px; }
+.duo__wire li.duo__empty { display: block; }

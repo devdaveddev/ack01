@@ -27,6 +27,11 @@ from ..context import ContextError, build_from_sources, parse_github
 from .db import Agent, Event, Handoff, Vote, database_url, make_engine, make_sessions
 from .safe_fetch import SafeOpener, check_url
 
+try:
+    from .duo import Duo
+except ImportError:  # the live agents need the protocol's own dependencies; the rest of the site works without them
+    Duo = None
+
 SUBSCRIBERS = ("alpha", "gamma", "delta")
 SITE_DIST = Path(__file__).resolve().parents[2] / "site" / "dist"
 MAX_BODY = 20_000
@@ -34,6 +39,8 @@ POSTS_PER_MINUTE = 10  # per client address, in memory; a single process only
 AGENTS_PER_DAY = 3  # agents one client address may create
 EVENTS_PER_MINUTE = 20  # posts one agent may make
 EVENT_KINDS = ("note", "question", "answer", "share")
+DUO_RUNS_PER_HOUR = 6  # live-demo runs one client address may start
+DUO_RUNS_PER_DAY = 200  # live-demo runs the whole site may start in a day
 CONTEXT_PER_HOUR = 3  # context packs one client address may build
 CONTEXT_PER_DAY = 40  # context packs the whole site may build in a day
 CONTEXT_TIMEOUT = 60  # seconds before a build is abandoned
@@ -159,6 +166,8 @@ def create_app(url: str | None = None) -> FastAPI:
     sessions: sessionmaker[Session] = make_sessions(engine)
     app = FastAPI(title="Ack01", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.engine = engine
+    # One shared live run: every visitor watches the same two agents. ACK_DUO_PACE=0 turns the narration pauses off.
+    duo = app.state.duo = Duo(pace=float(os.environ.get("ACK_DUO_PACE", "1.0"))) if Duo else None
     recent_posts: dict[str, list[float]] = defaultdict(list)
 
     def db():
@@ -303,6 +312,33 @@ def create_app(url: str | None = None) -> FastAPI:
             .order_by(Event.id.desc()).limit(limit)
         ).all()
         return {"events": [serialize_event(event, name) for event, name in rows]}
+
+    def need_duo() -> Duo:
+        if duo is None:
+            raise HTTPException(503, "the live agents are not installed on this server")
+        return duo
+
+    @app.get("/api/duo")
+    def duo_state(after: int = 0):
+        return need_duo().snapshot(max(0, after))
+
+    @app.post("/api/duo/next")
+    def duo_next():
+        need_duo().resume()
+        return duo.snapshot()
+
+    @app.post("/api/duo/start")
+    def duo_start(request: Request, step: bool = False):
+        need_duo()
+        # Joining a run that is already going costs nothing, so it is never limited.
+        if duo.running():
+            return duo.snapshot()
+        if not take("duo:" + client_address(request), DUO_RUNS_PER_HOUR, 3600):
+            raise HTTPException(429, "this address has started its live runs for the hour")
+        if not take("duo-day", DUO_RUNS_PER_DAY, 86400):
+            raise HTTPException(429, "the site has started its live runs for today; try tomorrow")
+        duo.start(step=step)
+        return duo.snapshot()
 
     @app.post("/api/context")
     def build_context(payload: NewContext, request: Request):

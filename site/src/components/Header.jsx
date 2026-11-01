@@ -13,6 +13,7 @@ export default function Header({ console: inConsole = false }) {
           ) : (
             <>
               <a href="#submit">Submit</a>
+              <a href="#duo">Live</a>
               <a href="#log">Log</a>
               <a href="#agents">Agents</a>
               <a href="#context">Context</a>

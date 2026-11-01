@@ -5,6 +5,7 @@ import Hero from './components/Hero.jsx'
 import Handoff from './components/Handoff.jsx'
 import Ledger from './components/Ledger.jsx'
 import Agents from './components/Agents.jsx'
+import Duo from './components/Duo.jsx'
 import AgentWire from './components/AgentWire.jsx'
 import ContextPack from './components/ContextPack.jsx'
 import { Clauses, Filing, Footer, Permit, Ways } from './components/Sections.jsx'
@@ -60,6 +61,7 @@ export default function App() {
               <Hero />
               <WireSection />
               <Handoff />
+              <Duo />
               <Ledger />
               <Agents />
               <ContextPack />

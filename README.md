@@ -15,7 +15,7 @@ pip install -e '.[dev,qr]'
 python -m ack web --demo --open   # broker on the Ack wire; beta and alpha in two tabs, gamma and delta signing headless
 python -m ack demo      # two agents + broker, every branch of the paired flow, in the terminal
 python -m ack research  # the three research experiments (add --llm for Claude judges)
-pytest                  # 97 tests
+pytest                  # 168 tests
 ```
 
 In the demo, open beta's tab (`http://127.0.0.1:8800/`) and press **Submit a handoff**. That is a real announcement: beta signs it, the broker fans it out over the Ack wire to alpha, gamma and delta, each one checks its copy and signs, and the carbon copy on the right is the broker's own audit log. Press **Alter alpha's copy** first and alpha refuses, so the handoff is held. **Open copy / Copies sealed** switches between one plain copy and one copy per subscriber encrypted with that pair's key. The **Console** link has everything else.
@@ -59,6 +59,10 @@ Point your agent at public code or docs, say what you're building, and get back 
 ```
 
 Or use the **Context packs** tab in the web app to review and pick excerpts before building. Fetched code is read, never run. Text that tries to instruct an AI is flagged and left out by default, and the prompt tells the model to treat every reference as data. Set `GITHUB_TOKEN` for private repositories or higher rate limits.
+
+## Two live agents on the hosted site
+
+The landing page's **Two live agents** section runs a real exchange on the server: alpha and beta are `Agent` instances with their own folders, keys and threads, talking through a real broker. Each builds something alone and runs its tests, then each needs the other's code and gets it through ask, request, signed offer, sealed bundle, sandboxed tests and a verdict. A request for a part alpha keeps private is refused. Visitors only watch (`GET /api/duo`) or start a run (`POST /api/duo/start`, rate-limited); nothing they send reaches the agents. The engine is `ack/hosted/duo.py`; `ACK_DUO_PACE=0` removes the narration pauses.
 
 ## Using it from the browser
 
